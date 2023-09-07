@@ -1,0 +1,91 @@
+/home/matteo/PycharmProjects/seai_project/venv/bin/python /home/matteo/PycharmProjects/seai_project/main.py GTSRB_model_from_scratch_CONV.h5 posit gtsrb
+2023-09-07 11:06:47.101060: E tensorflow/core/lib/monitoring/collection_registry.cc:77] Cannot register 2 metrics with the same name: /tensorflow/core/saved_model/write/count
+2023-09-07 11:06:47.101096: E tensorflow/core/lib/monitoring/collection_registry.cc:77] Cannot register 2 metrics with the same name: /tensorflow/core/saved_model/read/count
+2023-09-07 11:06:47.101106: E tensorflow/core/lib/monitoring/collection_registry.cc:77] Cannot register 2 metrics with the same name: /tensorflow/core/saved_model/write/api
+2023-09-07 11:06:47.101113: E tensorflow/core/lib/monitoring/collection_registry.cc:77] Cannot register 2 metrics with the same name: /tensorflow/core/saved_model/read/api
+Posit mode
+Model: "sequential_1"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+conv2d_3 (Conv2D)            (None, 30, 30, 32)        896
+_________________________________________________________________
+max_pooling2d_2 (MaxPooling2 (None, 15, 15, 32)        0
+_________________________________________________________________
+conv2d_4 (Conv2D)            (None, 13, 13, 64)        18496
+_________________________________________________________________
+max_pooling2d_3 (MaxPooling2 (None, 6, 6, 64)          0
+_________________________________________________________________
+conv2d_5 (Conv2D)            (None, 4, 4, 64)          36928
+_________________________________________________________________
+flatten_1 (Flatten)          (None, 1024)              0
+_________________________________________________________________
+dense_2 (Dense)              (None, 64)                65600
+_________________________________________________________________
+dense_3 (Dense)              (None, 43)                2795
+=================================================================
+Total params: 124,715
+Trainable params: 124,715
+Non-trainable params: 0
+_________________________________________________________________
+DATASET: gtsrb
+WARNING:tensorflow:From /home/matteo/PycharmProjects/seai_project/venv/lib/python3.8/site-packages/tensorflow/python/ops/array_ops.py:5059: calling gather (from tensorflow.python.ops.array_ops) with validate_indices is deprecated and will be removed in a future version.
+Instructions for updating:
+The `validate_indices` argument has no effect. Indices are always validated on CPU and never validated on GPU.
+2023-09-07 11:06:57.761243: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:164] None of the MLIR Optimization Passes are enabled (registered 2)
+accuracy: 0.8783473603672532
+123/123 [==============================] - 1s 5ms/step - loss: 49.0701 - accuracy: 0.8783
+Test accuracy: 0.878, test loss: 49.070
+Classification report:
+              precision    recall  f1-score   support
+
+           0     0.8636    0.9048    0.8837        21
+           1     0.6587    0.9910    0.7914       222
+           2     0.7923    0.9156    0.8495       225
+           3     0.8587    0.5603    0.6781       141
+           4     0.9691    0.7929    0.8722       198
+           5     0.8743    0.8226    0.8476       186
+           6     1.0000    0.7143    0.8333        42
+           7     0.6546    0.8819    0.7515       144
+           8     0.9811    0.3688    0.5361       141
+           9     0.9732    0.9864    0.9797       147
+          10     0.9840    0.9204    0.9512       201
+          11     0.8973    0.9924    0.9424       132
+          12     0.9951    0.9762    0.9856       210
+          13     0.9858    0.9630    0.9742       216
+          14     0.9750    1.0000    0.9873        78
+          15     0.9524    0.9524    0.9524        63
+          16     0.8511    0.9524    0.8989        42
+          17     1.0000    1.0000    1.0000       111
+          18     0.7905    0.9750    0.8731       120
+          19     0.5385    0.6667    0.5957        21
+          20     1.0000    0.2500    0.4000        36
+          21     0.6667    0.9697    0.7901        33
+          22     1.0000    0.9744    0.9870        39
+          23     0.8519    0.9020    0.8762        51
+          24     0.5952    0.9259    0.7246        27
+          25     0.9562    0.8733    0.9129       150
+          26     1.0000    0.5000    0.6667        60
+          27     0.7143    0.8333    0.7692        24
+          28     0.8750    0.9074    0.8909        54
+          29     0.8824    0.5556    0.6818        27
+          30     0.8571    0.8000    0.8276        45
+          31     0.9726    0.9103    0.9404        78
+          32     0.8148    0.9167    0.8627        24
+          33     0.9403    0.9130    0.9265        69
+          34     0.8400    1.0000    0.9130        42
+          35     1.0000    0.9833    0.9916       120
+          36     0.9722    0.8974    0.9333        39
+          37     0.9545    1.0000    0.9767        21
+          38     0.9426    0.9517    0.9471       207
+          39     1.0000    0.9000    0.9474        30
+          40     0.7857    0.9167    0.8462        36
+          41     0.8571    1.0000    0.9231        24
+          42     0.9583    0.9583    0.9583        24
+
+    accuracy                         0.8783      3921
+   macro avg     0.8845    0.8646    0.8576      3921
+weighted avg     0.8978    0.8783    0.8735      3921
+
+
+Process finished with exit code 0
