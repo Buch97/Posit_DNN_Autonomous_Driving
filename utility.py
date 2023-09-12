@@ -92,7 +92,7 @@ def load_class_model(model_name, exec_mode):
 
     input_shape = (32, 32, 3)
     old_model = tf.keras.models.load_model(os.path.join(model_path, model_name), compile=False)
-    model = create_model_dense()
+    model = create_model_conv_deeper()
     model.build(input_shape)
     model.set_weights(old_model.get_weights())
     model.compile(loss='categorical_crossentropy',
@@ -124,6 +124,23 @@ def create_model_conv():
     model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', dtype=K.floatx()))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(64, activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.Dense(43, activation='softmax', dtype=K.floatx()))
+    return model
+
+
+def create_model_conv_deeper():
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3), dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), padding='same', dtype=K.floatx()))
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), padding='same', dtype=K.floatx()))
+    model.add(tf.keras.layers.Conv2D(128, (3, 3), activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), padding='same', dtype=K.floatx()))
+    model.add(tf.keras.layers.Conv2D(128, (3, 3), activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), padding='same', dtype=K.floatx()))
+    model.add(tf.keras.layers.Flatten())
+    model.add(tf.keras.layers.Dense(256, activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.Dense(128, activation='relu', dtype=K.floatx()))
     model.add(tf.keras.layers.Dense(43, activation='softmax', dtype=K.floatx()))
     return model
 
