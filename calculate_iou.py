@@ -121,7 +121,7 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9
 model.compile(loss=loss_fn, optimizer=optimizer)
 
 latest_checkpoint = tf.train.latest_checkpoint(model_dir)
-K.set_floatx('float16')
+K.set_floatx('posit160')
 model.load_weights(latest_checkpoint)
 image = tf.keras.Input(shape=[None, None, 3], name="image")
 predictions = model(image, training=False)
@@ -132,7 +132,7 @@ inference_model = tf.keras.Model(inputs=image, outputs=detections)
 def prepare_image(image):
     image, _, ratio = resize_and_pad_image(image, jitter=None)
     image = tf.keras.applications.resnet.preprocess_input(image)
-    image = tf.cast(image, dtype=tf.float16)
+    image = tf.cast(image, dtype=tf.posit160)
     return tf.expand_dims(image, axis=0), ratio
 
 
@@ -147,9 +147,9 @@ for sample in eval_ds:
     num_detections = detections.valid_detections[0]
 
     pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
-    pred = tf.cast(pred, dtype=tf.float16)
-    normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.float16)
-    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=tf.float16))
+    pred = tf.cast(pred, dtype=tf.posit160)
+    normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.posit160)
+    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160))
     iou_list.extend(iou)
 
 means = [tf.reduce_mean(arr).numpy() for arr in iou_list]

@@ -413,7 +413,7 @@ class LabelEncoder:
 
 def get_backbone():
     """Builds ResNet50 with pre-trained imagenet weights"""
-    K.set_floatx('float16')
+    K.set_floatx('posit160')
     backbone = tf.keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
