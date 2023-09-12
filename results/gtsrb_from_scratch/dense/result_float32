@@ -1,6 +1,36 @@
-<class 'posit160'>
-accuracy: 0.9872481509818923
-123/123 [==============================] - 137s 1s/step - loss: 0.0514 - accuracy: 0.9872
+Float32 mode
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+flatten (Flatten)            (None, 3072)              0
+_________________________________________________________________
+layer_normalization (LayerNo (None, 3072)              6144
+_________________________________________________________________
+dense (Dense)                (None, 300)               921900
+_________________________________________________________________
+dropout (Dropout)            (None, 300)               0
+_________________________________________________________________
+dense_1 (Dense)              (None, 300)               90300
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 300)               0
+_________________________________________________________________
+dense_2 (Dense)              (None, 300)               90300
+_________________________________________________________________
+dense_3 (Dense)              (None, 43)                12943
+=================================================================
+Total params: 1,121,587
+Trainable params: 1,121,587
+Non-trainable params: 0
+_________________________________________________________________
+DATASET: gtsrb
+WARNING:tensorflow:From /home/matteo/PycharmProjects/seai_project/venv/lib/python3.8/site-packages/tensorflow/python/ops/array_ops.py:5059: calling gather (from tensorflow.python.ops.array_ops) with validate_indices is deprecated and will be removed in a future version.
+Instructions for updating:
+The `validate_indices` argument has no effect. Indices are always validated on CPU and never validated on GPU.
+2023-09-12 13:03:55.853389: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:164] None of the MLIR Optimization Passes are enabled (registered 2)
+<class 'numpy.float32'>
+accuracy: 0.9869931140015302
+123/123 [==============================] - 1s 4ms/step - loss: 0.0505 - accuracy: 0.9870
 Test accuracy: 0.987, test loss: 0.051
 Classification report:
               precision    recall  f1-score   support
@@ -15,7 +45,7 @@ Classification report:
            7     1.0000    0.9653    0.9823       144
            8     0.9724    1.0000    0.9860       141
            9     1.0000    0.9932    0.9966       147
-          10     1.0000    0.9900    0.9950       201
+          10     1.0000    0.9851    0.9925       201
           11     0.9923    0.9773    0.9847       132
           12     1.0000    1.0000    1.0000       210
           13     1.0000    0.9907    0.9953       216
@@ -30,7 +60,7 @@ Classification report:
           22     0.9512    1.0000    0.9750        39
           23     0.9804    0.9804    0.9804        51
           24     1.0000    1.0000    1.0000        27
-          25     1.0000    0.9933    0.9967       150
+          25     0.9933    0.9933    0.9933       150
           26     1.0000    0.9667    0.9831        60
           27     1.0000    0.9583    0.9787        24
           28     1.0000    0.9815    0.9907        54
@@ -49,9 +79,9 @@ Classification report:
           41     1.0000    0.9167    0.9565        24
           42     1.0000    1.0000    1.0000        24
 
-    accuracy                         0.9872      3921
-   macro avg     0.9852    0.9859    0.9853      3921
-weighted avg     0.9876    0.9872    0.9873      3921
+    accuracy                         0.9870      3921
+   macro avg     0.9851    0.9858    0.9852      3921
+weighted avg     0.9874    0.9870    0.9870      3921
 
 
 Process finished with exit code 0

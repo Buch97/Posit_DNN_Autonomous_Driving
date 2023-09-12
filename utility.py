@@ -1,35 +1,22 @@
 import os
-import random
 import sys
 
 import numpy as np
 import tensorflow as tf
+from PIL import Image
+from keras.layers import LayerNormalization
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from tensorflow.python.keras import backend as K
-import cv2
-from PIL import Image
 
 model_path = 'models'
 datasets_folder = 'dataset'
-
-
-def data_augmentation(original_image):
-    if random.randint(0, 1):  # decide whether to flip the image or not
-        horizontal = random.randint(0, 1)
-        if horizontal:
-            new_image = tf.image.flip_left_right(original_image)
-        else:
-            new_image = tf.image.flip_up_down(original_image)
-    else:  # rotate the image of a random degree (between 90° and 270°)
-        k = random.randint(1, 3)
-        new_image = tf.image.rot90(original_image, k)
-
-    return np.asarray(new_image)
+random_seed = 42
 
 
 def evaluate(model, x_test, y_test):
     y_score = model.predict(x_test)
+    print(type(y_score[0][0]))
     y_pred = np.argmax(y_score, axis=1)
     y_true = np.argmax(y_test, axis=1)
     correct_predictions = np.sum(np.equal(y_pred, y_true))
@@ -45,21 +32,6 @@ def evaluate(model, x_test, y_test):
     # print(y_pred.argmax(axis=1))
     print(metrics.classification_report(y_true, y_pred, digits=4))
     metrics.ConfusionMatrixDisplay.from_predictions(y_true, y_pred)
-
-    '''# ROC curve
-    fpr, tpr, th = metrics.roc_curve(y_true, y_score)
-    roc_auc = metrics.roc_auc_score(y_true, y_score)
-
-    plt.figure()
-    plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.0])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC curve')
-    plt.legend(loc="lower right")
-    plt.show()'''
 
 
 def load_test_set_gtsrb(dataset):
@@ -82,55 +54,28 @@ def load_test_set_gtsrb(dataset):
             im = Image.open(img_path + '/' + img)
             im = im.resize((32, 32))
             im = np.array(im)
+            if K.floatx() == 'posit160':
+                im = tf.convert_to_tensor(im, dtype=tf.posit160)
+            elif K.floatx() == 'float32':
+                im = tf.convert_to_tensor(im, dtype=tf.float32)
+            elif K.floatx() == 'float64':
+                im = tf.convert_to_tensor(im, dtype=tf.float64)
+            elif K.floatx() == 'float16':
+                im = tf.convert_to_tensor(im, dtype=tf.float16)
             data.append(im)
             labels.append(i)
 
-    data = np.array(data)
+    x = np.array(data)
     labels = np.array(labels)
 
-    x = data.astype('float32')
     y = tf.keras.utils.to_categorical(np.array(labels))
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, shuffle=True, stratify=y)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, shuffle=True, stratify=y,
+                                                        random_state=random_seed)
     return x_test, y_test
 
 
-def load_test_set_gtsdb(dataset):
-    print("DATASET: " + dataset)
-    images = os.path.join(datasets_folder, dataset)
-
-    for i in os.listdir(images):
-        img_path = os.path.join(images, i)
-        for img in os.listdir(img_path):
-            im = cv2.imread(img_path + '/' + img)
-            if int(i) == 31 or int(i) == 37 or int(i) == 27 or int(i) == 19 or int(i) == 00:
-                new_img = data_augmentation(im)
-                path = os.path.join(img_path, "aug_" + img)
-                if not cv2.imwrite(path, new_img):
-                    raise Exception("Could not write image")
-
-    data = []
-    labels = []
-
-    for i in os.listdir(images):
-        img_path = os.path.join(images, i)
-        for img in os.listdir(img_path):
-            im = Image.open(img_path + '/' + img)
-            im = im.resize((32, 32))
-            im = np.array(im)
-            data.append(im)
-            labels.append(i)
-
-    data = np.array(data)
-    labels = np.array(labels)
-
-    x = data.astype('float32')
-    y = tf.keras.utils.to_categorical(np.array(labels))
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, shuffle=True, stratify=y)
-    return x_test, y_test
-
-
-def load_model(model_name, exec_mode):
-    if exec_mode != 'float32' and exec_mode != 'posit':
+def load_class_model(model_name, exec_mode):
+    if exec_mode != 'float32' and exec_mode != 'posit' and exec_mode != 'float16' and exec_mode != 'float64':
         print("Error exec mode")
         sys.exit()
     elif exec_mode == 'posit':
@@ -138,10 +83,65 @@ def load_model(model_name, exec_mode):
         print('Posit mode')
     elif exec_mode == 'float32':
         print("Float32 mode")
+    elif exec_mode == 'float16':
+        K.set_floatx('float16')
+        print("Float16 mode")
+    elif exec_mode == 'float64':
+        K.set_floatx('float64')
+        print("Float64 mode")
 
-    model = tf.keras.models.load_model(os.path.join(model_path, model_name), compile=False)
-    model.summary()
+    input_shape = (32, 32, 3)
+    old_model = tf.keras.models.load_model(os.path.join(model_path, model_name), compile=False)
+    model = create_model_dense()
+    model.build(input_shape)
+    model.set_weights(old_model.get_weights())
     model.compile(loss='categorical_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
+    model.summary()
+    return model
+
+
+def create_model_dense():
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Flatten(input_shape=[32, 32, 3], dtype=K.floatx()))
+    model.add(LayerNormalization())
+    model.add(tf.keras.layers.Dense(300, activation="relu", dtype=K.floatx()))
+    model.add(tf.keras.layers.Dropout(0.5))
+    model.add(tf.keras.layers.Dense(300, activation="relu", dtype=K.floatx()))
+    model.add(tf.keras.layers.Dropout(0.5))
+    model.add(tf.keras.layers.Dense(300, activation="relu", dtype=K.floatx()))
+    model.add(tf.keras.layers.Dense(43, activation="softmax", dtype=K.floatx()))
+    return model
+
+
+def create_model_conv():
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3), dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), dtype=K.floatx()))
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.MaxPooling2D((2, 2), dtype=K.floatx()))
+    model.add(tf.keras.layers.Conv2D(64, (3, 3), activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.Flatten())
+    model.add(tf.keras.layers.Dense(64, activation='relu', dtype=K.floatx()))
+    model.add(tf.keras.layers.Dense(43, activation='softmax', dtype=K.floatx()))
+    return model
+
+
+def create_model_resnet():
+    input_shape = (32, 32, 3)
+
+    conv_base = tf.keras.applications.resnet_v2.ResNet50V2(
+        weights="imagenet",
+        include_top=False,
+        input_shape=input_shape)
+    conv_base.trainable = False
+
+    inputs = tf.keras.Input(shape=input_shape)
+    x = tf.keras.applications.resnet_v2.preprocess_input(inputs)
+    x = conv_base(x)
+    x = tf.keras.layers.GlobalAveragePooling2D(name='my_glo_avg_pool')(x)
+
+    outputs = tf.keras.layers.Dense(43, activation="softmax", name='predictions', dtype=K.floatx())(x)
+    model = tf.keras.Model(inputs, outputs)
     return model

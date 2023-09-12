@@ -1,6 +1,6 @@
 import sys
 
-from utility import evaluate, load_model, load_test_set_gtsdb, load_test_set_gtsrb
+from utility import evaluate, load_test_set_gtsrb, load_class_model
 
 if __name__ == '__main__':
     if len(sys.argv) < 4:
@@ -11,11 +11,9 @@ if __name__ == '__main__':
     exec_mode = sys.argv[2]
     dataset = sys.argv[3]
 
-    model = load_model(model_name, exec_mode)
+    model = load_class_model(model_name, exec_mode)
     if dataset == 'gtsrb':
         x_test, y_test = load_test_set_gtsrb(dataset)
-    elif dataset == 'gtsdb':
-        x_test, y_test = load_test_set_gtsdb(dataset)
     else:
         print('Error')
         sys.exit()
