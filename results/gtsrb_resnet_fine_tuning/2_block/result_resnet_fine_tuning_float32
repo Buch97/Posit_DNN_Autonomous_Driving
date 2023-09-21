@@ -1,13 +1,13 @@
 Float32 mode
-Model: "model"
+Model: "model_1"
 _________________________________________________________________
 Layer (type)                 Output Shape              Param #
 =================================================================
-input_2 (InputLayer)         [(None, 32, 32, 3)]       0
+input_4 (InputLayer)         [(None, 32, 32, 3)]       0
 _________________________________________________________________
-tf.math.truediv_1 (TFOpLambd (None, 32, 32, 3)         0
+tf.math.truediv (TFOpLambda) (None, 32, 32, 3)         0
 _________________________________________________________________
-tf.math.subtract_1 (TFOpLamb (None, 32, 32, 3)         0
+tf.math.subtract (TFOpLambda (None, 32, 32, 3)         0
 _________________________________________________________________
 resnet50v2 (Functional)      (None, 1, 1, 2048)        23564800
 _________________________________________________________________
@@ -16,68 +16,13 @@ _________________________________________________________________
 predictions (Dense)          (None, 43)                88107
 =================================================================
 Total params: 23,652,907
-Trainable params: 88,107
-Non-trainable params: 23,564,800
+Trainable params: 9,005,099
+Non-trainable params: 14,647,808
 _________________________________________________________________
 DATASET: gtsrb
 WARNING:tensorflow:From /home/matteo/PycharmProjects/seai_project/venv/lib/python3.8/site-packages/tensorflow/python/ops/array_ops.py:5059: calling gather (from tensorflow.python.ops.array_ops) with validate_indices is deprecated and will be removed in a future version.
 Instructions for updating:
 The `validate_indices` argument has no effect. Indices are always validated on CPU and never validated on GPU.
-2023-09-12 12:49:45.744316: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:164] None of the MLIR Optimization Passes are enabled (registered 2)
-<class 'numpy.float32'>
-accuracy: 0.9188982402448355
-123/123 [==============================] - 12s 83ms/step - loss: 0.2566 - accuracy: 0.9189
+2023-09-21 15:31:36.072879: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:164] None of the MLIR Optimization Passes are enabled (registered 2)
+123/123 [==============================] - 8s 58ms/step - loss: 0.2566 - accuracy: 0.9189
 Test accuracy: 0.919, test loss: 0.257
-Classification report:
-              precision    recall  f1-score   support
-
-           0     1.0000    0.9524    0.9756        21
-           1     0.8667    0.9369    0.9004       222
-           2     0.8676    0.8444    0.8559       225
-           3     0.8984    0.8156    0.8550       141
-           4     0.8044    0.9141    0.8558       198
-           5     0.8742    0.7097    0.7834       186
-           6     0.9535    0.9762    0.9647        42
-           7     0.8355    0.8819    0.8581       144
-           8     0.8074    0.7730    0.7899       141
-           9     0.9660    0.9660    0.9660       147
-          10     0.9565    0.9851    0.9706       201
-          11     0.9512    0.8864    0.9176       132
-          12     0.9858    0.9905    0.9881       210
-          13     0.9861    0.9861    0.9861       216
-          14     1.0000    0.9744    0.9870        78
-          15     1.0000    1.0000    1.0000        63
-          16     0.9762    0.9762    0.9762        42
-          17     0.9823    1.0000    0.9911       111
-          18     0.9200    0.9583    0.9388       120
-          19     1.0000    0.8095    0.8947        21
-          20     0.8500    0.9444    0.8947        36
-          21     0.9688    0.9394    0.9538        33
-          22     0.8222    0.9487    0.8810        39
-          23     0.9074    0.9608    0.9333        51
-          24     1.0000    0.8148    0.8980        27
-          25     0.9067    0.9067    0.9067       150
-          26     0.8571    0.8000    0.8276        60
-          27     0.7826    0.7500    0.7660        24
-          28     0.9184    0.8333    0.8738        54
-          29     0.9000    1.0000    0.9474        27
-          30     0.9000    1.0000    0.9474        45
-          31     0.9610    0.9487    0.9548        78
-          32     0.9600    1.0000    0.9796        24
-          33     0.9714    0.9855    0.9784        69
-          34     0.9302    0.9524    0.9412        42
-          35     0.9652    0.9250    0.9447       120
-          36     0.8750    0.8974    0.8861        39
-          37     1.0000    0.9048    0.9500        21
-          38     0.9621    0.9807    0.9713       207
-          39     0.9677    1.0000    0.9836        30
-          40     0.9459    0.9722    0.9589        36
-          41     1.0000    1.0000    1.0000        24
-          42     0.9600    1.0000    0.9796        24
-
-    accuracy                         0.9189      3921
-   macro avg     0.9289    0.9256    0.9259      3921
-weighted avg     0.9198    0.9189    0.9182      3921
-
-
-Process finished with exit code 0

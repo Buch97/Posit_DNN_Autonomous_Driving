@@ -5,9 +5,7 @@ from tensorflow.python.keras import backend as K
 from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, resize_and_pad_image, \
     compute_iou
 
-BATCH_SIZE = 8
 NUM_CLASSES = 43
-EPOCHS = 50
 model_dir = '/media/matteo/CIRAGO/weights'
 class_ids = {
     'speed_limit_20': 1,
@@ -54,10 +52,9 @@ class_ids = {
     'restriction_ends_overtaking': 42,
     'restriction_ends_overtaking_trucks': 43
 }
-iou_list = []
-
 keys_array = list(class_ids.keys())
 class_mapping = dict(zip(range(1, len(class_ids) + 1), class_ids))
+iou_list = []
 
 
 def parse_tfrecord(example_proto):
@@ -118,16 +115,30 @@ loss_fn = RetinaNetLoss(NUM_CLASSES)
 model = RetinaNet(NUM_CLASSES, resnet50_backbone)
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
-model.compile(loss=loss_fn, optimizer=optimizer)
-
 latest_checkpoint = tf.train.latest_checkpoint(model_dir)
 K.set_floatx('posit160')
-model.load_weights(latest_checkpoint)
-image = tf.keras.Input(shape=[None, None, 3], name="image")
-predictions = model(image, training=False)
-detections = DecodePredictions(confidence_threshold=0.4)(image, predictions)
-inference_model = tf.keras.Model(inputs=image, outputs=detections)
 
+print("********LOADING MODEL********")
+model.load_weights(latest_checkpoint)
+model._dtype = tf.posit160
+
+'''model.layers[0].backbone._dtype = tf.posit160
+for layer in model.layers[0].backbone.layers:
+    layer._dtype = tf.posit160
+model.print_weights()
+'''
+'''model.layers[0].backbone.input[0] = tf.cast(model.layers[0].backbone.input[0], dtype=tf.posit160)
+model.layers[0].backbone.output[0] = tf.cast(model.layers[0].backbone.output[0], dtype=tf.posit160)
+model.layers[0].backbone.output[1] = tf.cast(model.layers[0].backbone.output[1], dtype=tf.posit160)
+model.layers[0].backbone.output[2] = tf.cast(model.layers[0].backbone.output[2], dtype=tf.posit160)'''
+
+print("********MODEL LOADED********")
+
+image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=tf.posit160)
+predictions = model(image, training=False)
+predictions._dtype = tf.posit160
+detections = DecodePredictions(confidence_threshold=0.4)(image, predictions)
+inference_model = tf.keras.Model(inputs=image, outputs=detections, dtype=tf.posit160)
 
 def prepare_image(image):
     image, _, ratio = resize_and_pad_image(image, jitter=None)

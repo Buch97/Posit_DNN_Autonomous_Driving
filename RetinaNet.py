@@ -1,6 +1,7 @@
 # RetinaNet implementation
 import numpy as np
 import tensorflow as tf
+from numpy import shape
 from tensorflow.python.keras import backend as K
 
 
@@ -417,6 +418,7 @@ def get_backbone():
     backbone = tf.keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
+
     c3_output, c4_output, c5_output = [
         backbone.get_layer(layer_name).output
         for layer_name in ["conv3_block4_out", "conv4_block6_out", "conv5_block3_out"]
@@ -507,6 +509,7 @@ class RetinaNet(tf.keras.Model):
         super().__init__(name="RetinaNet", **kwargs)
         self.fpn = FeaturePyramid(backbone)
         self.num_classes = num_classes
+        self.converted_weights = None
 
         prior_probability = tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
         self.cls_head = build_head(9 * num_classes, prior_probability)
@@ -525,6 +528,30 @@ class RetinaNet(tf.keras.Model):
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
         return tf.concat([box_outputs, cls_outputs], axis=-1)
+
+    def print_weights(self):
+        for layer in self.layers:
+            if layer.weights:
+                print(f'Layer: {layer.name}')
+                for weight in layer.weights:
+                    print(f' - Name: {weight.name}')
+                    print(f' - DType: {weight.dtype}')
+                print('------')
+
+    def set_layer_dtype(self):
+        for layer in self.layers:
+            layer._dtype = tf.posit160
+            if layer.weights:
+                for weight in layer.weights:
+                    weight._dtype = tf.posit160
+
+    def cast_weights_to_posit160(self):
+        new_weights = []
+        for layer in self.layers:
+            if layer.weights:
+                for weight in layer.weights:
+                    new_weights.append(np.array(tf.cast(weight, dtype=tf.posit160)))
+        self.converted_weights = new_weights
 
 
 class DecodePredictions(tf.keras.layers.Layer):
@@ -655,8 +682,8 @@ class RetinaNetLoss(tf.losses.Loss):
             dtype=tf.float32,
         )
         cls_predictions = y_pred[:, :, 4:]
-        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1.0), dtype=tf.float32)
-        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2.0), dtype=tf.float32)
+        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1.0), dtype=tf.posit160)
+        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2.0), dtype=tf.posit160)
         clf_loss = self._clf_loss(cls_labels, cls_predictions)
         box_loss = self._box_loss(box_labels, box_predictions)
         clf_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, clf_loss)
