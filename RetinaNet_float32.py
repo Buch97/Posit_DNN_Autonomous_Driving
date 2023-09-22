@@ -1,10 +1,6 @@
 # RetinaNet implementation
 import numpy as np
 import tensorflow as tf
-from numpy import shape
-from tensorflow.python.keras import backend as K
-
-from models import clone_old_model
 
 
 def swap_xy(boxes):
@@ -414,14 +410,11 @@ class LabelEncoder:
         return batch_images, labels.stack()
 
 
-def get_backbone():
+def get_backbone_float32():
     """Builds ResNet50 with pre-trained imagenet weights"""
-    K.set_floatx('posit160')
-    old_backbone = tf.keras.applications.ResNet50(
+    backbone = tf.keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
-
-    backbone = clone_old_model(old_backbone)
 
     c3_output, c4_output, c5_output = [
         backbone.get_layer(layer_name).output
@@ -432,7 +425,7 @@ def get_backbone():
     )
 
 
-class FeaturePyramid(tf.keras.layers.Layer):
+class FeaturePyramidFloat32(tf.keras.layers.Layer):
     """Builds the Feature Pyramid with the feature maps from the backbone.
 
     Attributes:
@@ -443,16 +436,16 @@ class FeaturePyramid(tf.keras.layers.Layer):
 
     def __init__(self, backbone=None, **kwargs):
         super().__init__(name="FeaturePyramid", **kwargs)
-        self.backbone = backbone if backbone else get_backbone()
-        self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c5_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c3_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c4_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c5_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c6_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=K.floatx())
-        self.conv_c7_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=K.floatx())
-        self.upsample_2x = tf.keras.layers.UpSampling2D(2, dtype=K.floatx())
+        self.backbone = backbone if backbone else get_backbone_float32()
+        self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same")
+        self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same")
+        self.conv_c5_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same")
+        self.conv_c3_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same")
+        self.conv_c4_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same")
+        self.conv_c5_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same")
+        self.conv_c6_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same")
+        self.conv_c7_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same")
+        self.upsample_2x = tf.keras.layers.UpSampling2D(2)
 
     def call(self, images, training=False):
         c3_output, c4_output, c5_output = self.backbone(images, training=training)
@@ -469,7 +462,7 @@ class FeaturePyramid(tf.keras.layers.Layer):
         return p3_output, p4_output, p5_output, p6_output, p7_output
 
 
-def build_head(output_filters, bias_init):
+def build_head_float32(output_filters, bias_init):
     """Builds the class/box predictions head.
 
     Arguments:
@@ -484,9 +477,9 @@ def build_head(output_filters, bias_init):
     kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
     for _ in range(4):
         head.add(
-            tf.keras.layers.Conv2D(256, 3, padding="same", kernel_initializer=kernel_init, dtype=K.floatx())
+            tf.keras.layers.Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
         )
-        head.add(tf.keras.layers.ReLU(dtype=K.floatx()))
+        head.add(tf.keras.layers.ReLU())
     head.add(
         tf.keras.layers.Conv2D(
             output_filters,
@@ -494,14 +487,13 @@ def build_head(output_filters, bias_init):
             1,
             padding="same",
             kernel_initializer=kernel_init,
-            bias_initializer=bias_init,
-            dtype=K.floatx()
+            bias_initializer=bias_init
         )
     )
     return head
 
 
-class RetinaNet(tf.keras.Model):
+class RetinaNetFloat32(tf.keras.Model):
     """A subclassed Keras model implementing the RetinaNet architecture.
 
     Attributes:
@@ -512,13 +504,13 @@ class RetinaNet(tf.keras.Model):
 
     def __init__(self, num_classes, backbone=None, **kwargs):
         super().__init__(name="RetinaNet", **kwargs)
-        self.fpn = FeaturePyramid(backbone)
+        self.fpn = FeaturePyramidFloat32(backbone)
         self.num_classes = num_classes
         self.converted_weights = None
 
         prior_probability = tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
-        self.cls_head = build_head(9 * num_classes, prior_probability)
-        self.box_head = build_head(9 * 4, "zeros")
+        self.cls_head = build_head_float32(9 * num_classes, prior_probability)
+        self.box_head = build_head_float32(9 * 4, "zeros")
 
     def call(self, image, training=False):
         features = self.fpn(image, training=training)
@@ -583,7 +575,6 @@ class DecodePredictions(tf.keras.layers.Layer):
         )
 
     def _decode_box_predictions(self, anchor_boxes, box_predictions):
-        box_predictions = tf.cast(box_predictions, tf.float32)
         boxes = box_predictions * self._box_variance
         boxes = tf.concat(
             [
@@ -603,7 +594,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         boxes = self._decode_box_predictions(anchor_boxes[None, ...], box_predictions)
         return tf.image.combined_non_max_suppression(
             tf.expand_dims(boxes, axis=2),
-            tf.cast(cls_predictions, tf.float32),
+            cls_predictions,
             self.max_detections_per_class,
             self.max_detections,
             self.nms_iou_threshold,

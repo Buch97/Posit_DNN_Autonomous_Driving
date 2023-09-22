@@ -7,6 +7,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from tensorflow.python.keras import backend as K
 
+from RetinaNet import resize_and_pad_image, compute_iou
 from models import clone_old_model
 
 model_path = 'models'
@@ -95,3 +96,53 @@ def load_class_model(model_name, exec_mode):
                   metrics=['accuracy'])
     model.summary()
     return model
+
+
+def prepare_image(sample):
+    img, _, r = resize_and_pad_image(sample["image"], jitter=None)
+    img = tf.keras.applications.resnet.preprocess_input(img)
+    img = tf.cast(img, dtype=tf.posit160)
+    return tf.expand_dims(img, axis=0), r, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160)
+
+
+def parse_tfrecord(example_proto):
+    feature_description = {
+        'image/encoded': tf.io.FixedLenFeature([], tf.string),
+        'image/filename': tf.io.FixedLenFeature([], tf.string),
+        'image/source_id': tf.io.FixedLenFeature([], tf.string),
+        'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/xmax': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
+        'image/object/class/label': tf.io.VarLenFeature(tf.int64)
+    }
+
+    example = tf.io.parse_single_example(example_proto, feature_description)
+    image = tf.image.decode_image(example['image/encoded'])
+    image.set_shape((None, None, 3))
+
+    xmin = example['image/object/bbox/xmin'].values
+    ymin = example['image/object/bbox/ymin'].values
+    xmax = example['image/object/bbox/xmax'].values
+    ymax = example['image/object/bbox/ymax'].values
+    class_id = example['image/object/class/label'].values
+
+    bounding_box = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
+    area = (xmax - xmin) * (ymax - ymin)
+
+    objects = {
+        'area': tf.cast(area, dtype=tf.float32),
+        'bbox': tf.cast(bounding_box, dtype=tf.float32),
+        'id': tf.cast(class_id, dtype=tf.float32),
+        'is_crowd': False,
+        'label': tf.cast(class_id, dtype=tf.float32),
+    }
+
+    output_dict = {
+        'image': image,
+        'image/filename': example['image/filename'],
+        'image/source_id': example['image/source_id'],
+        'objects': objects,
+    }
+
+    return output_dict

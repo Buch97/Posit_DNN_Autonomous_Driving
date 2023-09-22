@@ -2,8 +2,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, resize_and_pad_image, \
-    compute_iou
+from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, compute_iou
+from RetinaNet_float32 import RetinaNetFloat32, get_backbone_float32
+from utility import parse_tfrecord, prepare_image
 
 NUM_CLASSES = 43
 model_dir = '/media/matteo/CIRAGO/weights'
@@ -56,50 +57,6 @@ keys_array = list(class_ids.keys())
 class_mapping = dict(zip(range(1, len(class_ids) + 1), class_ids))
 iou_list = []
 
-
-def parse_tfrecord(example_proto):
-    feature_description = {
-        'image/encoded': tf.io.FixedLenFeature([], tf.string),
-        'image/filename': tf.io.FixedLenFeature([], tf.string),
-        'image/source_id': tf.io.FixedLenFeature([], tf.string),
-        'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
-        'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
-        'image/object/bbox/xmax': tf.io.VarLenFeature(tf.float32),
-        'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
-        'image/object/class/label': tf.io.VarLenFeature(tf.int64)
-    }
-
-    example = tf.io.parse_single_example(example_proto, feature_description)
-    image = tf.image.decode_image(example['image/encoded'])
-    image.set_shape((None, None, 3))
-
-    xmin = example['image/object/bbox/xmin'].values
-    ymin = example['image/object/bbox/ymin'].values
-    xmax = example['image/object/bbox/xmax'].values
-    ymax = example['image/object/bbox/ymax'].values
-    class_id = example['image/object/class/label'].values
-
-    bounding_box = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
-    area = (xmax - xmin) * (ymax - ymin)
-
-    objects = {
-        'area': tf.cast(area, dtype=tf.float32),
-        'bbox': tf.cast(bounding_box, dtype=tf.float32),
-        'id': tf.cast(class_id, dtype=tf.float32),
-        'is_crowd': False,
-        'label': tf.cast(class_id, dtype=tf.float32),
-    }
-
-    output_dict = {
-        'image': image,
-        'image/filename': example['image/filename'],
-        'image/source_id': example['image/source_id'],
-        'objects': objects,
-    }
-
-    return output_dict
-
-
 # CONFIGURE MODEL
 label_encoder = LabelEncoder()
 
@@ -110,61 +67,62 @@ learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
 )
 
 # LOAD MODEL
+K.set_floatx('posit160')
+
 resnet50_backbone = get_backbone()
 loss_fn = RetinaNetLoss(NUM_CLASSES)
 model = RetinaNet(NUM_CLASSES, resnet50_backbone)
+old_model = RetinaNetFloat32(NUM_CLASSES, get_backbone_float32())
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+model.compile(loss=loss_fn, optimizer=optimizer)
 latest_checkpoint = tf.train.latest_checkpoint(model_dir)
-K.set_floatx('posit160')
 
 print("********LOADING MODEL********")
-model.load_weights(latest_checkpoint)
-model._dtype = tf.posit160
-
-'''model.layers[0].backbone._dtype = tf.posit160
-for layer in model.layers[0].backbone.layers:
-    layer._dtype = tf.posit160
-model.print_weights()
-'''
-'''model.layers[0].backbone.input[0] = tf.cast(model.layers[0].backbone.input[0], dtype=tf.posit160)
-model.layers[0].backbone.output[0] = tf.cast(model.layers[0].backbone.output[0], dtype=tf.posit160)
-model.layers[0].backbone.output[1] = tf.cast(model.layers[0].backbone.output[1], dtype=tf.posit160)
-model.layers[0].backbone.output[2] = tf.cast(model.layers[0].backbone.output[2], dtype=tf.posit160)'''
-
+old_model.load_weights(latest_checkpoint)
+model.set_weights(old_model.get_weights())
 print("********MODEL LOADED********")
 
 image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=tf.posit160)
 predictions = model(image, training=False)
-predictions._dtype = tf.posit160
 detections = DecodePredictions(confidence_threshold=0.4)(image, predictions)
-inference_model = tf.keras.Model(inputs=image, outputs=detections, dtype=tf.posit160)
+inference_model = tf.keras.Model(inputs=image, outputs=detections)
 
-def prepare_image(image):
-    image, _, ratio = resize_and_pad_image(image, jitter=None)
-    image = tf.keras.applications.resnet.preprocess_input(image)
-    image = tf.cast(image, dtype=tf.posit160)
-    return tf.expand_dims(image, axis=0), ratio
-
-
-eval_ds = tf.data.TFRecordDataset('dataset/test.record')
+print("********LOAD TEST SET********")
+eval_ds = tf.data.TFRecordDataset('dataset/test.record', num_parallel_reads=tf.data.experimental.AUTOTUNE)
 eval_ds = eval_ds.map(parse_tfrecord)
+print("********TEST SET LOADED********")
+
 width = 1300
 height = 800
 
-for sample in eval_ds:
-    input_image, ratio = prepare_image(sample["image"])
-    detections = inference_model.predict(input_image, verbose=0)
-    num_detections = detections.valid_detections[0]
+print("********START INFERENCE********")
+i = 0
+BATCH_SIZE = 4
+eval_ds = eval_ds.map(prepare_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+eval_ds = eval_ds.batch(BATCH_SIZE)
 
-    pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
-    pred = tf.cast(pred, dtype=tf.posit160)
-    normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.posit160)
-    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160))
-    iou_list.extend(iou)
+for batch in eval_ds:
+    input_images, ratios, bboxes = batch
+    print(input_images)
+    detection_batch = inference_model.predict(input_images, verbose=0)
 
+    for i in range(BATCH_SIZE):
+        detections = detection_batch[i]
+        ratio = ratios[i]
+        bbox = bboxes[i]
+        num_detections = detections.valid_detections[0]
+
+        pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
+        pred = tf.cast(pred, dtype=tf.posit160)
+        normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.posit160)
+
+        iou = compute_iou(normalized_pred, bbox)
+        iou_list.extend(iou)
+        i = i + 1
+        print('Image ' + str(i))
+
+# Mean IOU
 means = [tf.reduce_mean(arr).numpy() for arr in iou_list]
-print(means)
 global_mean = np.mean(means)
-
 print("Average IOU:", global_mean)
