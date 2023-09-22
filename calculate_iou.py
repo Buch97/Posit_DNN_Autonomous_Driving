@@ -104,8 +104,7 @@ eval_ds = eval_ds.batch(BATCH_SIZE)
 
 for batch in eval_ds:
     input_images, ratios, bboxes = batch
-    print(input_images)
-    detection_batch = inference_model.predict(input_images, verbose=0)
+    detection_batch = inference_model.predict(input_images, verbose=0, batch_size=BATCH_SIZE)
 
     for i in range(BATCH_SIZE):
         detections = detection_batch[i]

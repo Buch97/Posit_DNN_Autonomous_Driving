@@ -102,7 +102,7 @@ def prepare_image(sample):
     img, _, r = resize_and_pad_image(sample["image"], jitter=None)
     img = tf.keras.applications.resnet.preprocess_input(img)
     img = tf.cast(img, dtype=tf.posit160)
-    return tf.expand_dims(img, axis=0), r, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160)
+    return img, r, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160)
 
 
 def parse_tfrecord(example_proto):
