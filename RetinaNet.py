@@ -417,11 +417,11 @@ class LabelEncoder:
 def get_backbone():
     """Builds ResNet50 with pre-trained imagenet weights"""
     K.set_floatx('posit160')
-    old_backbone = tf.keras.applications.ResNet50(
+    backbone = tf.keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
 
-    backbone = clone_old_model(old_backbone)
+    # backbone = clone_old_model(old_backbone)
 
     c3_output, c4_output, c5_output = [
         backbone.get_layer(layer_name).output
@@ -443,6 +443,7 @@ class FeaturePyramid(tf.keras.layers.Layer):
 
     def __init__(self, backbone=None, **kwargs):
         super().__init__(name="FeaturePyramid", **kwargs)
+        print(K.floatx())
         self.backbone = backbone if backbone else get_backbone()
         self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
         self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())

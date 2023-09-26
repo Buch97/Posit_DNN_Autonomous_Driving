@@ -2,9 +2,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, compute_iou
+from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, compute_iou, \
+    resize_and_pad_image
 from RetinaNet_float32 import RetinaNetFloat32, get_backbone_float32
-from utility import parse_tfrecord, prepare_image
+from utility import parse_tfrecord
 
 NUM_CLASSES = 43
 model_dir = '/media/matteo/CIRAGO/weights'
@@ -83,7 +84,7 @@ old_model.load_weights(latest_checkpoint)
 model.set_weights(old_model.get_weights())
 print("********MODEL LOADED********")
 
-image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=tf.posit160)
+image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=K.floatx())
 predictions = model(image, training=False)
 detections = DecodePredictions(confidence_threshold=0.4)(image, predictions)
 inference_model = tf.keras.Model(inputs=image, outputs=detections)
@@ -97,31 +98,32 @@ width = 1300
 height = 800
 
 print("********START INFERENCE********")
+
 i = 0
-BATCH_SIZE = 4
-eval_ds = eval_ds.map(prepare_image, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-eval_ds = eval_ds.batch(BATCH_SIZE)
 
-for batch in eval_ds:
-    input_images, ratios, bboxes = batch
-    detection_batch = inference_model.predict(input_images, verbose=0, batch_size=BATCH_SIZE)
 
-    for i in range(BATCH_SIZE):
-        detections = detection_batch[i]
-        ratio = ratios[i]
-        bbox = bboxes[i]
-        num_detections = detections.valid_detections[0]
+def prepare_image(img):
+    img, _, r = resize_and_pad_image(img, jitter=None)
+    img = tf.keras.applications.resnet.preprocess_input(img)
+    img = tf.cast(img, dtype=K.floatx())
+    return tf.expand_dims(img, axis=0), r
 
-        pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
-        pred = tf.cast(pred, dtype=tf.posit160)
-        normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.posit160)
 
-        iou = compute_iou(normalized_pred, bbox)
-        iou_list.extend(iou)
-        i = i + 1
-        print('Image ' + str(i))
+for sample in eval_ds:
+    input_image, ratio = prepare_image(sample["image"])
+    detections = inference_model.predict(input_image, verbose=1)
+    i = i + 1
+    print('Image ' + str(i))
+    num_detections = detections.valid_detections[0]
 
-# Mean IOU
+    pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
+    pred = tf.cast(pred, dtype=K.floatx())
+    normalized_pred = pred / tf.constant([width, height, width, height], dtype=K.floatx())
+    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=K.floatx()))
+    iou_list.extend(iou)
+
 means = [tf.reduce_mean(arr).numpy() for arr in iou_list]
+print(means)
 global_mean = np.mean(means)
+
 print("Average IOU:", global_mean)

@@ -7,7 +7,6 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from tensorflow.python.keras import backend as K
 
-from RetinaNet import resize_and_pad_image, compute_iou
 from models import clone_old_model
 
 model_path = 'models'
@@ -96,13 +95,6 @@ def load_class_model(model_name, exec_mode):
                   metrics=['accuracy'])
     model.summary()
     return model
-
-
-def prepare_image(sample):
-    img, _, r = resize_and_pad_image(sample["image"], jitter=None)
-    img = tf.keras.applications.resnet.preprocess_input(img)
-    img = tf.cast(img, dtype=tf.posit160)
-    return img, r, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160)
 
 
 def parse_tfrecord(example_proto):
