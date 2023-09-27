@@ -3,7 +3,7 @@ import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
 from RetinaNet import LabelEncoder, get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, compute_iou, \
-    resize_and_pad_image
+    resize_and_pad_image_posit
 from RetinaNet_float32 import RetinaNetFloat32, get_backbone_float32
 from utility import parse_tfrecord
 
@@ -70,19 +70,30 @@ learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
 # LOAD MODEL
 K.set_floatx('posit160')
 
-resnet50_backbone = get_backbone()
+input_shape = (None, None, None, 3)
 loss_fn = RetinaNetLoss(NUM_CLASSES)
-model = RetinaNet(NUM_CLASSES, resnet50_backbone)
-old_model = RetinaNetFloat32(NUM_CLASSES, get_backbone_float32())
-
 optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+
+# posit160 model
+resnet50_backbone = get_backbone()
+model = RetinaNet(NUM_CLASSES, resnet50_backbone)
+model.build(input_shape)
 model.compile(loss=loss_fn, optimizer=optimizer)
-latest_checkpoint = tf.train.latest_checkpoint(model_dir)
+
+# float32 model
+resnet50_backbone_float32 = get_backbone_float32()
+old_model = RetinaNetFloat32(NUM_CLASSES, resnet50_backbone_float32)
+old_model.build(input_shape)
+old_model.compile(loss=loss_fn, optimizer=optimizer)
+
 
 print("********LOADING MODEL********")
+latest_checkpoint = tf.train.latest_checkpoint(model_dir)
 old_model.load_weights(latest_checkpoint)
 model.set_weights(old_model.get_weights())
 print("********MODEL LOADED********")
+
+model.summary()
 
 image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=K.floatx())
 predictions = model(image, training=False)
@@ -103,7 +114,7 @@ i = 0
 
 
 def prepare_image(img):
-    img, _, r = resize_and_pad_image(img, jitter=None)
+    img, _, r = resize_and_pad_image_posit(img, jitter=None)
     img = tf.keras.applications.resnet.preprocess_input(img)
     img = tf.cast(img, dtype=K.floatx())
     return tf.expand_dims(img, axis=0), r

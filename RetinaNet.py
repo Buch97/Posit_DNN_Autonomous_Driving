@@ -227,8 +227,8 @@ def random_flip_horizontal(image, boxes):
     return image, boxes
 
 
-def resize_and_pad_image(
-        image, min_side=800.0, max_side=1333.0, jitter=[640, 1024], stride=128.0
+def resize_and_pad_image_posit(
+        image, min_side=500.0, max_side=1000.0, jitter=[640, 800], stride=128.0
 ):
     """Resizes and pads image while preserving aspect ratio.
 
@@ -260,6 +260,9 @@ def resize_and_pad_image(
     image_shape = tf.cast(tf.shape(image)[:2], dtype=tf.float32)
     if jitter is not None:
         min_side = tf.random.uniform((), jitter[0], jitter[1], dtype=tf.float32)
+
+    max_side *= 0.5
+    min_side *= 0.5
     ratio = min_side / tf.reduce_min(image_shape)
     if ratio * tf.reduce_max(image_shape) > max_side:
         ratio = max_side / tf.reduce_max(image_shape)
@@ -417,11 +420,11 @@ class LabelEncoder:
 def get_backbone():
     """Builds ResNet50 with pre-trained imagenet weights"""
     K.set_floatx('posit160')
-    backbone = tf.keras.applications.ResNet50(
+    old_backbone = tf.keras.applications.ResNet50(
         include_top=False, input_shape=[None, None, 3]
     )
 
-    # backbone = clone_old_model(old_backbone)
+    backbone = clone_old_model(old_backbone)
 
     c3_output, c4_output, c5_output = [
         backbone.get_layer(layer_name).output
