@@ -446,7 +446,6 @@ class FeaturePyramid(tf.keras.layers.Layer):
 
     def __init__(self, backbone=None, **kwargs):
         super().__init__(name="FeaturePyramid", **kwargs)
-        print(K.floatx())
         self.backbone = backbone if backbone else get_backbone()
         self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
         self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
