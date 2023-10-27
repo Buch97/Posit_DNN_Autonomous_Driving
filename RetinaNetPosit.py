@@ -1,7 +1,6 @@
 # RetinaNet implementation
 import numpy as np
 import tensorflow as tf
-from numpy import shape
 from tensorflow.python.keras import backend as K
 
 from models import clone_old_model
@@ -260,7 +259,6 @@ def resize_and_pad_image_posit(
     image_shape = tf.cast(tf.shape(image)[:2], dtype=tf.float32)
     if jitter is not None:
         min_side = tf.random.uniform((), jitter[0], jitter[1], dtype=tf.float32)
-
     max_side *= 0.5
     min_side *= 0.5
     ratio = min_side / tf.reduce_min(image_shape)
@@ -296,7 +294,7 @@ def preprocess_data(sample):
     class_id = tf.cast(sample["objects"]["label"], dtype=tf.int32)
 
     image, bbox = random_flip_horizontal(image, bbox)
-    image, image_shape, _ = resize_and_pad_image(image)
+    image, image_shape, _ = resize_and_pad_image_posit(image)
 
     bbox = tf.stack(
         [
@@ -435,7 +433,7 @@ def get_backbone():
     )
 
 
-class FeaturePyramid(tf.keras.layers.Layer):
+class FeaturePyramidPosit(tf.keras.layers.Layer):
     """Builds the Feature Pyramid with the feature maps from the backbone.
 
     Attributes:
@@ -447,15 +445,15 @@ class FeaturePyramid(tf.keras.layers.Layer):
     def __init__(self, backbone=None, **kwargs):
         super().__init__(name="FeaturePyramid", **kwargs)
         self.backbone = backbone if backbone else get_backbone()
-        self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c5_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=K.floatx())
-        self.conv_c3_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c4_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c5_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=K.floatx())
-        self.conv_c6_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=K.floatx())
-        self.conv_c7_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=K.floatx())
-        self.upsample_2x = tf.keras.layers.UpSampling2D(2, dtype=K.floatx())
+        self.conv_c3_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=tf.posit160)
+        self.conv_c4_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=tf.posit160)
+        self.conv_c5_1x1 = tf.keras.layers.Conv2D(256, 1, 1, "same", dtype=tf.posit160)
+        self.conv_c3_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=tf.posit160)
+        self.conv_c4_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=tf.posit160)
+        self.conv_c5_3x3 = tf.keras.layers.Conv2D(256, 3, 1, "same", dtype=tf.posit160)
+        self.conv_c6_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=tf.posit160)
+        self.conv_c7_3x3 = tf.keras.layers.Conv2D(256, 3, 2, "same", dtype=tf.posit160)
+        self.upsample_2x = tf.keras.layers.UpSampling2D(2, dtype=tf.posit160)
 
     def call(self, images, training=False):
         c3_output, c4_output, c5_output = self.backbone(images, training=training)
@@ -472,7 +470,7 @@ class FeaturePyramid(tf.keras.layers.Layer):
         return p3_output, p4_output, p5_output, p6_output, p7_output
 
 
-def build_head(output_filters, bias_init):
+def build_head_posit(output_filters, bias_init):
     """Builds the class/box predictions head.
 
     Arguments:
@@ -487,9 +485,9 @@ def build_head(output_filters, bias_init):
     kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
     for _ in range(4):
         head.add(
-            tf.keras.layers.Conv2D(256, 3, padding="same", kernel_initializer=kernel_init, dtype=K.floatx())
+            tf.keras.layers.Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
         )
-        head.add(tf.keras.layers.ReLU(dtype=K.floatx()))
+        head.add(tf.keras.layers.ReLU())
     head.add(
         tf.keras.layers.Conv2D(
             output_filters,
@@ -497,14 +495,13 @@ def build_head(output_filters, bias_init):
             1,
             padding="same",
             kernel_initializer=kernel_init,
-            bias_initializer=bias_init,
-            dtype=K.floatx()
+            bias_initializer=bias_init
         )
     )
     return head
 
 
-class RetinaNet(tf.keras.Model):
+class RetinaNetPosit(tf.keras.Model):
     """A subclassed Keras model implementing the RetinaNet architecture.
 
     Attributes:
@@ -514,14 +511,14 @@ class RetinaNet(tf.keras.Model):
     """
 
     def __init__(self, num_classes, backbone=None, **kwargs):
-        super().__init__(name="RetinaNet", **kwargs)
-        self.fpn = FeaturePyramid(backbone)
+        super().__init__(name="RetinaNetPosit", **kwargs)
+        self.fpn = FeaturePyramidPosit(backbone)
         self.num_classes = num_classes
         self.converted_weights = None
 
         prior_probability = tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
-        self.cls_head = build_head(9 * num_classes, prior_probability)
-        self.box_head = build_head(9 * 4, "zeros")
+        self.cls_head = build_head_posit(9 * num_classes, prior_probability)
+        self.box_head = build_head_posit(9 * 4, "zeros")
 
     def call(self, image, training=False):
         features = self.fpn(image, training=training)
@@ -536,15 +533,6 @@ class RetinaNet(tf.keras.Model):
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
         return tf.concat([box_outputs, cls_outputs], axis=-1)
-
-    def print_weights(self):
-        for layer in self.layers:
-            if layer.weights:
-                print(f'Layer: {layer.name}')
-                for weight in layer.weights:
-                    print(f' - Name: {weight.name}')
-                    print(f' - DType: {weight.dtype}')
-                print('------')
 
 
 class DecodePredictions(tf.keras.layers.Layer):
@@ -676,8 +664,8 @@ class RetinaNetLoss(tf.losses.Loss):
             dtype=tf.float32,
         )
         cls_predictions = y_pred[:, :, 4:]
-        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1.0), dtype=tf.posit160)
-        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2.0), dtype=tf.posit160)
+        positive_mask = tf.cast(tf.greater(y_true[:, :, 4], -1.0), dtype=tf.float32)
+        ignore_mask = tf.cast(tf.equal(y_true[:, :, 4], -2.0), dtype=tf.float32)
         clf_loss = self._clf_loss(cls_labels, cls_predictions)
         box_loss = self._box_loss(box_labels, box_predictions)
         clf_loss = tf.where(tf.equal(ignore_mask, 1.0), 0.0, clf_loss)

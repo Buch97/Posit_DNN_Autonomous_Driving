@@ -1,0 +1,28 @@
+Float64 mode
+Model: "model_1"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+input_4 (InputLayer)         [(None, 32, 32, 3)]       0
+_________________________________________________________________
+tf.math.truediv_1 (TFOpLambd (None, 32, 32, 3)         0
+_________________________________________________________________
+tf.math.subtract_1 (TFOpLamb (None, 32, 32, 3)         0
+_________________________________________________________________
+mobilenetv2_1.00_224 (Functi (None, 1, 1, 1280)        2257984
+_________________________________________________________________
+my_glo_avg_pool (GlobalAvera (None, 1280)              0
+_________________________________________________________________
+predictions (Dense)          (None, 43)                55083
+=================================================================
+Total params: 2,313,067
+Trainable params: 464,683
+Non-trainable params: 1,848,384
+_________________________________________________________________
+DATASET: gtsrb
+WARNING:tensorflow:From /home/matteo/PycharmProjects/seai_project/venv/lib/python3.8/site-packages/tensorflow/python/ops/array_ops.py:5059: calling gather (from tensorflow.python.ops.array_ops) with validate_indices is deprecated and will be removed in a future version.
+Instructions for updating:
+The `validate_indices` argument has no effect. Indices are always validated on CPU and never validated on GPU.
+2023-10-27 12:13:09.349409: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:164] None of the MLIR Optimization Passes are enabled (registered 2)
+123/123 [==============================] - 9s 62ms/step - loss: 0.2885 - accuracy: 0.9179
+Test accuracy: 0.918, test loss: 0.289

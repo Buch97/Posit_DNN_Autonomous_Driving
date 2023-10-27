@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from RetinaNet import get_backbone, RetinaNetLoss, RetinaNet, DecodePredictions, compute_iou, \
+from RetinaNetPosit import get_backbone, RetinaNetLoss, RetinaNetPosit, DecodePredictions, compute_iou, \
     resize_and_pad_image_posit
 from RetinaNet_float32 import RetinaNetFloat32, get_backbone_float32
 from utility import parse_tfrecord
@@ -25,7 +25,7 @@ input_shape = (None, None, None, 3)
 
 # posit160 model
 resnet50_backbone = get_backbone()
-model = RetinaNet(NUM_CLASSES, resnet50_backbone)
+model = RetinaNetPosit(NUM_CLASSES, resnet50_backbone)
 model.build(input_shape)
 model.compile(loss=loss_fn, optimizer=optimizer)
 
@@ -43,13 +43,13 @@ print("********MODEL LOADED********")
 
 model.summary()
 
-image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=K.floatx())
+image = tf.keras.Input(shape=[None, None, 3], name="image")
 predictions = model(image, training=False)
-detections = DecodePredictions(confidence_threshold=0.4)(image, predictions)
+detections = DecodePredictions(confidence_threshold=0.3)(image, predictions)
 inference_model = tf.keras.Model(inputs=image, outputs=detections)
 
 print("********LOAD TEST SET********")
-eval_ds = tf.data.TFRecordDataset('dataset/test.record', num_parallel_reads=tf.data.experimental.AUTOTUNE)
+eval_ds = tf.data.TFRecordDataset('dataset/test.record')
 eval_ds = eval_ds.map(parse_tfrecord)
 print("********TEST SET LOADED********")
 
@@ -67,7 +67,7 @@ print('Mode: ' + K.floatx())
 def prepare_image(img):
     img, _, r = resize_and_pad_image_posit(img, jitter=None)
     img = tf.keras.applications.resnet.preprocess_input(img)
-    img = tf.cast(img, dtype=K.floatx())
+    img = tf.cast(img, dtype=tf.posit160)
     return tf.expand_dims(img, axis=0), r
 
 
@@ -78,16 +78,17 @@ for sample in eval_ds:
     num_detections = detections.valid_detections[0]
 
     pred = (detections.nmsed_boxes[0][:num_detections] / ratio)
-    pred = tf.cast(pred, dtype=K.floatx())
+    pred = tf.cast(pred, dtype=tf.posit160)
 
-    normalized_pred = pred / tf.constant([width, height, width, height], dtype=K.floatx())
-    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=K.floatx()))
+    normalized_pred = pred / tf.constant([width, height, width, height], dtype=tf.posit160)
+    iou = compute_iou(normalized_pred, tf.cast(sample["objects"]["bbox"], dtype=tf.posit160))
     iou_list.extend(iou)
 
     i = i + 1
     print('Image ' + str(i))
 
 means = [tf.reduce_mean(arr).numpy() for arr in iou_list]
+print(means)
 global_mean = np.mean(means)
 
 print("Average IOU:", global_mean)

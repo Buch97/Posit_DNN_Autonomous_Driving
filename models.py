@@ -1,8 +1,8 @@
+import tensorflow as tf
 from keras.layers import LayerNormalization, BatchNormalization
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.models import Model
 from tensorflow.keras.models import clone_model
-from tensorflow.python.keras import backend as K
 
 
 def my_clone_function(layer):
@@ -13,7 +13,7 @@ def my_clone_function(layer):
         return layer.__class__.from_config(config)
     if isinstance(layer, Layer):
         config = layer.get_config()
-        config['dtype'] = K.floatx()
+        config['dtype'] = tf.float64
         return layer.__class__.from_config(config)
 
 

@@ -9,7 +9,7 @@ from tensorflow.python.keras import backend as K
 
 from models import clone_old_model
 
-model_path = 'models'
+model_path = '/media/matteo/CIRAGO/models'
 datasets_folder = 'dataset'
 random_seed = 42
 
